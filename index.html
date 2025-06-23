@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Maps with GPS Directions</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    .controls {
+      padding: 15px;
+      background-color: #f0f0f0;
+    }
+
+    input {
+      padding: 8px;
+      width: 200px;
+      margin: 5px;
+    }
+
+    button {
+      padding: 8px 15px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    #map {
+      height: 500px;
+      width: 100%;
+    }
+
+    #output {
+      padding: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <input id="from" placeholder="From location" />
+    <input id="to" placeholder="To location" />
+    <button onclick="useMyLocation()">📍 Use My Location</button>
+    <button onclick="calculateRoute()">➡️ Get Directions</button>
+    <p id="output"></p>
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    let map;
+    let directionsService;
+    let directionsRenderer;
+    let geocoder;
+    let currentLocationMarker = null; // 🔹 Marker for current location
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 7.8731, lng: 80.7718 }, // Sri Lanka center
+        zoom: 8,
+      });
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer();
+      directionsRenderer.setMap(map);
+      geocoder = new google.maps.Geocoder();
+    }
+
+    function useMyLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const latlng = { lat, lng };
+
+            map.setCenter(latlng);
+            map.setZoom(14);
+
+            // 🔹 Add or update the current location marker
+            if (currentLocationMarker) {
+              currentLocationMarker.setPosition(latlng);
+            } else {
+              currentLocationMarker = new google.maps.Marker({
+                position: latlng,
+                map: map,
+                title: "You are here",
+                icon: {
+                  url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                }
+              });
+            }
+
+            // Convert lat/lng to readable address
+            geocoder.geocode({ location: latlng }, (results, status) => {
+              if (status === "OK") {
+                if (results[0]) {
+                  document.getElementById("from").value = results[0].formatted_address;
+                } else {
+                  alert("No address found.");
+                }
+              } else {
+                alert("Geocoder failed: " + status);
+              }
+            });
+          },
+          (error) => {
+            let message = "Unknown error";
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                message = "User denied the request for Geolocation.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                message = "Location information is unavailable.";
+                break;
+              case error.TIMEOUT:
+                message = "The request to get user location timed out.";
+                break;
+            }
+            alert("Geolocation failed: " + message);
+            console.error("Geolocation error:", error);
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by this browser.");
+      }
+    }
+
+    function calculateRoute() {
+      const from = document.getElementById("from").value;
+      const to = document.getElementById("to").value;
+
+      if (!from || !to) {
+        alert("Please enter both FROM and TO addresses.");
+        return;
+      }
+
+      const request = {
+        origin: from,
+        destination: to,
+        travelMode: 'DRIVING'
+      };
+
+      directionsService.route(request, (result, status) => {
+        if (status === 'OK') {
+          directionsRenderer.setDirections(result);
+          const distance = result.routes[0].legs[0].distance.text;
+          const duration = result.routes[0].legs[0].duration.text;
+          document.getElementById("output").innerText =
+            `Distance: ${distance}, Duration: ${duration}`;
+        } else {
+          alert("Could not retrieve directions: " + status);
+        }
+      });
+    }
+  </script>
+
+  <!-- ✅ Replace YOUR_API_KEY_HERE with your actual key -->
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB2tV9hxIkjfd5ExJ6A_Zm9quUpSnvb9L4&callback=initMap">
+  </script>
+
+</body>
+</html>
